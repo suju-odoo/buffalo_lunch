@@ -11,7 +11,8 @@ export class BuffaloLunchListController extends ListController {
     }
     async onNewLunchSurvey() {
         try {
-            await this.orm.call("survey.survey", "create_next_lunch_survey")
+            const act_window = await this.orm.call("survey.survey", "open_next_lunch_survey_form")
+            this.actionService.doAction(act_window)
         }
         catch (error) {
             // legends never fail

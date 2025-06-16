@@ -1,0 +1,10 @@
+<odoo>
+    <template id="portal_my_details_fields" inherit_id="portal.portal_my_details_fields">
+        <xpath expr="//select[@name='country_id']/.." position="after">
+            <div class="col-12 d-xl-block">
+                <label class="col-form-label" for="is_vegan">Vegan</label>
+                <input type="checkbox" class="form-check-input" name="is_vegan" t-att-checked="partner.is_vegan"/>
+            </div>
+        </xpath>
+    </template>
+</odoo>

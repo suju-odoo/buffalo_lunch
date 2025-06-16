@@ -9,9 +9,13 @@ We eat lunch
     'website': "https://www.odoo.com",
     'category': 'Custom Development',
     'version': '18.0.1.0.0',
-    'depends': ['survey', 'lunch', 'contacts'],
+    'depends': ['calendar', 'website', 'survey', 'lunch', 'contacts'],
     'data': [
-        'views/survey.xml'
+        'security/survey_security.xml',
+        'views/survey.xml',
+        'views/survey_question.xml',
+        'views/survey_actions.xml',
+        'views/portal_template.xml',
     ],
     'assets': {
         'web.assets_backend': [

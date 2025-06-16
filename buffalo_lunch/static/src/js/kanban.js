@@ -3,23 +3,29 @@ import { KanbanController } from "@web/views/kanban/kanban_controller";
 import { registry } from '@web/core/registry';
 import { kanbanView } from '@web/views/kanban/kanban_view';
 import { useService } from "@web/core/utils/hooks";
+import { SurveyKanbanRenderer } from '@survey/views/survey_views';
 
-export class BuffaloLunchKanbanController extends KanbanController {
+export class BuffaloSurveyKanbanRenderer extends SurveyKanbanRenderer {}
+
+export class BuffaloSurveyKanbanController extends KanbanController {
     setup() {
         super.setup();
         this.orm = useService("orm");
     }
     async onNewLunchSurvey() {
         try {
-            await this.orm.call("survey.survey", "create_next_lunch_survey")
+            const act_window = await this.orm.call("survey.survey", "open_next_lunch_survey_form")
+            this.actionService.doAction(act_window)
         }
         catch (error) {
             // legends never fail
         }
     }
 }
-registry.category("views").add("buffalo_lunch_kanban", {
+
+registry.category("views").add("buffalo_survey_view_kanban", {
     ...kanbanView,
-    Controller: BuffaloLunchKanbanController,
+    Renderer: BuffaloSurveyKanbanRenderer,
+    Controller: BuffaloSurveyKanbanController,
     buttonTemplate: "buffalo_lunch.KanbanView.Buttons",
 });

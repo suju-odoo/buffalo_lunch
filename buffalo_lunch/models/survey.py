@@ -52,6 +52,7 @@ class Survey(models.Model):
                 'title': current_date.strftime('%A'),
                 'question_type': 'simple_choice',
                 'is_page': False,
+                'constr_mandatory': True
             })
             current_date += timedelta(days=1)
         
@@ -86,5 +87,111 @@ class Survey(models.Model):
             "survey_type": "lunch",
             "title": f"Lunch Survey: {date_from.strftime('%B %d, %Y')} - {date_end.strftime('%B %d, %Y')}"
         })
+        new_survey.questions_layout = "one_page"
+        new_survey.access_mode = "token"
+        new_survey.users_login_required = True
         new_survey._populate_lunch_questions()
-        # TODO: open windowaction
+        return new_survey
+
+    @api.model
+    def open_next_lunch_survey_form(self):
+        # create next lunch survey and open form view
+        new_survey = self.create_next_lunch_survey()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'survey.survey',
+            'res_id': new_survey.id,
+            'view_mode': 'form',
+            'name': 'Lunch Survey',
+            'views': [(self.env.ref('buffalo_lunch.buffalo_lunch_survey_form_base').id, 'form')],
+            'target': 'current',
+        }
+
+    def action_buffalo_survey_user_input_completed(self):
+        action = self.env['ir.actions.act_window']._for_xml_id('buffalo_lunch.action_survey_user_input')
+        ctx = dict(self.env.context)
+        ctx.update(
+            {
+                'search_default_survey_id': self.ids[0],
+                'search_default_completed': 1,
+                'search_default_group_by_partner': 1,
+            }
+        )
+        action['context'] = ctx
+        return action
+    
+    def action_buffalo_survey_user_input(self):
+        action = self.env['ir.actions.act_window']._for_xml_id('buffalo_lunch.action_survey_user_input')
+        ctx = dict(self.env.context)
+        ctx.update(
+            {
+                'search_default_survey_id': self.ids[0],
+                'search_default_group_by_partner': 1,
+            }
+        )
+        action['context'] = ctx
+        return action
+
+    def _compute_survey_statistic(self):
+        """
+        Computes statistics for surveys. For 'lunch' type surveys, it counts each unique user's
+        most representative answer (prioritizing 'done' state) as one entry for statistics.
+        For other survey types, it defers to the original Odoo computation.
+        """
+        default_vals = {
+            'answer_count': 0, 'answer_done_count': 0, 'success_count': 0,
+            'answer_score_avg': 0.0, 'success_ratio': 0.0
+        }
+
+        lunch_surveys = self.filtered(lambda s: s.survey_type == 'lunch')
+        other_surveys = self - lunch_surveys # records in self but not in lunch_surveys
+
+        # Apply original computation for non-lunch surveys
+        if other_surveys:
+            super(Survey, other_surveys)._compute_survey_statistic()
+
+        # Apply custom computation for lunch surveys
+        if lunch_surveys:
+            stat = dict((cid, dict(default_vals, total_score=0.0, unique_done_inputs_count=0)) for cid in lunch_surveys.ids)
+
+            user_inputs = self.env['survey.user_input'].search([
+                ('survey_id', 'in', lunch_surveys.ids),
+                ('test_entry', '=', False)
+            ], order='create_date desc')
+
+            unique_user_inputs_map = {}
+
+            for user_input in user_inputs:
+                survey_id = user_input.survey_id.id
+                user_key = (user_input.partner_id.id if user_input.partner_id else None, user_input.email)
+                composite_key = (survey_id, user_key)
+
+                if composite_key not in unique_user_inputs_map:
+                    unique_user_inputs_map[composite_key] = user_input
+                else:
+                    stored_input = unique_user_inputs_map[composite_key]
+                    if user_input.state == 'done' and stored_input.state != 'done':
+                        unique_user_inputs_map[composite_key] = user_input
+
+            for selected_input in unique_user_inputs_map.values():
+                survey_id = selected_input.survey_id.id
+                current_stat = stat[survey_id]
+
+                current_stat['answer_count'] += 1
+
+                if selected_input.state == 'done':
+                    current_stat['answer_done_count'] += 1
+                    current_stat['total_score'] += selected_input.scoring_percentage
+                    current_stat['unique_done_inputs_count'] += 1
+                    if selected_input.scoring_success:
+                        current_stat['success_count'] += 1
+
+            for survey_id, survey_stats in stat.items():
+                total_score = survey_stats.pop('total_score')
+                unique_done_count = survey_stats.pop('unique_done_inputs_count')
+
+                survey_stats['answer_score_avg'] = total_score / (unique_done_count or 1)
+                survey_stats['success_ratio'] = (survey_stats['success_count'] / (survey_stats['answer_done_count'] or 1.0)) * 100
+
+            for survey in lunch_surveys:
+                survey.update(stat.get(survey.id, default_vals))

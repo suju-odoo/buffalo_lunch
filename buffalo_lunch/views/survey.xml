@@ -1,11 +1,10 @@
 <odoo>
-    <!-- Form View Inherit for Survey -->
     <record id="buffalo_lunch_survey_form_base" model="ir.ui.view">
         <field name="name">survey.form.buffalo.base</field>
         <field name="model">survey.survey</field>
         <field name="active">False</field>
         <field name="arch" type="xml">
-            <form string="Survey" class="o_survey_form">
+            <form string="Survey" class="o_survey_form" create="false">
                 <field name="id" invisible="1"/>
                 <field name="session_state" invisible="1"/>
                 <field name="question_ids" invisible="1"/>
@@ -16,25 +15,18 @@
                       invisible="answer_done_count &lt;= 0"/>
                     <button name="action_test_survey" string="Test" type="object" invisible="not active or not question_ids"/>
                     <button name="action_unarchive" string="Reopen" class="btn-primary" type="object" invisible="active"/>
-                    <button name="action_archive" string="Close" type="object" invisible="not active"/>
+                    <button name="action_archive" string="Close Poll" type="object" invisible="not active"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_survey_user_input"
+                        <button name="action_buffalo_survey_user_input"
                             type="object"
                             class="oe_stat_button"
                             invisible="access_mode == 'public'"
                             icon="fa-envelope-o">
                             <field string="Registered" name="answer_count" widget="statinfo"/>
                         </button>
-                        <button name="action_survey_user_input_certified"
-                            type="object"
-                            class="oe_stat_button"
-                            invisible="not certification"
-                            icon="fa-trophy">
-                            <field string="Certified" name="success_count" widget="statinfo"/>
-                        </button>
-                        <button name="action_survey_user_input_completed"
+                        <button name="action_buffalo_survey_user_input_completed"
                             type="object"
                             class="oe_stat_button"
                             icon="fa-check-square-o">
@@ -52,7 +44,7 @@
                             <field name="allowed_survey_types" invisible="1"/>
                             <field name="survey_type" invisible="1"/>
                             <field name="date_from" required="survey_type == 'lunch'" widget="date_range" options="{'end_date_field': 'date_end'}"/>
-                            <field name="date_end" required="survey_type == 'lunch'"/>
+                            <field name="date_end" required="survey_type == 'lunch'" invisible="1"/>
                             <field name="user_id" domain="[('share', '=', False)]" widget="many2one_avatar_user"/>
                             <field name="restrict_user_ids" widget="many2many_tags_avatar"/>
                             <field name="active" invisible="1"/>
@@ -64,9 +56,9 @@
                             <field name="question_and_page_ids" nolabel="1" mode="list,kanban" context="{'default_survey_id': id}">
                                 <list decoration-bf="is_page"  editable="bottom">
                                     <field name="sequence" widget="handle" readonly="1"/>
-                                    <!-- <field name="title" widget="survey_description_page"/> -->
-                                    <field name="title"/>
-                                    <field name="product_ids" widget="many2many_tags"/>
+                                    <field name="title" string="Day"/>
+                                    <field name="product_ids" widget="many2many_tags" string="Menu!"/>
+                                    <field name="lunch_survey_stats_text" />
                                 </list>
                                  <form string="Survey Question" create="false" class="o_survey_question_view_form">
                                     <field name="is_placed_before_trigger" invisible="1"/>
@@ -454,14 +446,106 @@
     <record id="buffalo_lunch_survey_kanban_base" model="ir.ui.view">
         <field name="name">survey.kanban.buffalo.base</field>
         <field name="model">survey.survey</field>
-        <field name="mode">primary</field>
-        <field name="inherit_id" ref="survey.survey_survey_view_kanban"/>
         <field name="arch" type="xml">
-            <xpath expr="//kanban" position="attributes">
-                <attribute name="string">Base Survey</attribute>
-                <!-- <attribute name="create">false</attribute> -->
-                 <attribute name="js_class">buffalo_lunch_kanban</attribute>
-            </xpath>
+            <kanban highlight_color="color" create="false" js_class="buffalo_survey_view_kanban">
+                <field name="active"/>
+                <field name="certification"/>
+                <field name="create_date"/>
+                <field name="scoring_type"/>
+                <field name="session_state"/>
+                <field name="session_available"/>
+                <templates>
+                        <div t-name="menu" t-if="widget.editable">
+                            <a role="menuitem" type="open" class="dropdown-item">Edit Survey</a>
+                            <a t-if="record.active.raw_value" role="menuitem" type="object" class="dropdown-item" name="action_send_survey">Share</a>
+                            <a t-if="widget.deletable" role="menuitem" type="delete" class="dropdown-item">Delete</a>
+                            <div role="separator" class="dropdown-divider"/>
+                            <div role="separator" class="dropdown-item-text">Color</div>
+                            <field name="color" widget="kanban_color_picker"/>
+                        </div>
+                        <div t-name="card"
+                            t-attf-class="o_survey_kanban_card #{record.certification.raw_value ? 'o_survey_kanban_card_certification' : ''}" class="px-0">
+                            <!-- displayed in ungrouped mode -->
+                            <div class="o_survey_kanban_card_ungrouped row mx-4">
+                                <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger" invisible="active"/>
+                                <div class="col-lg-2 col-sm-8 py-0 my-2 my-lg-0 col-12 g-0">
+                                    <div class="d-flex flex-grow-1 flex-column my-0 my-lg-2">
+                                        <field name="title" class="fw-bold"/>
+                                        <span t-if="!selection_mode" class="d-flex align-items-center">
+                                            <field name="user_id" widget="many2one_avatar_user"
+                                                options="{'display_avatar_name': True}"/>
+                                                <span class="mx-1">-</span>
+                                            <t t-esc="luxon.DateTime.fromISO(record.create_date.raw_value).toFormat('MMM yyyy')"/>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div t-if="!selection_mode" class="col-lg-1 col-sm-4 col-6 py-0 my-2">
+                                    <a type="object"
+                                    name="action_buffalo_survey_user_input"
+                                    class="fw-bold">
+                                        <field name="answer_count"/><br />
+                                        <span class="text-muted">Registered</span>
+                                    </a>
+                                </div>
+                                <div t-if="!selection_mode" class="col-lg-1 col-sm-4 col-6 d-none d-sm-block py-0 my-2">
+                                    <a type="object"
+                                    name="action_buffalo_survey_user_input_completed"
+                                    class="fw-bold">
+                                        <field name="answer_done_count"/><br />
+                                        <span class="text-muted">Completed</span>
+                                    </a>
+                                </div>
+                                <div t-if="!selection_mode" class="col-lg-3 col-sm-12 d-none d-sm-flex justify-content-end gap-1 my-2 ms-auto pb-lg-3 py-0">
+                                    <button name="action_send_survey"
+                                            string="Share" type="object"
+                                            class="btn btn-secondary text-nowrap"
+                                            invisible="not active">
+                                        Share
+                                    </button>
+                                    <button name="action_test_survey"
+                                            string="Test" type="object"
+                                            class="btn btn-secondary text-nowrap"
+                                            invisible="not active">
+                                        Test
+                                    </button>
+                                    <button name="action_result_survey"
+                                            string="See results" type="object"
+                                            class="btn btn-secondary"
+                                            invisible="not active">
+                                        See results
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- displayed in grouped mode -->
+                            <div class="o_survey_kanban_card_grouped px-1">
+                                <widget name="web_ribbon" title="Poll Closed" bg_color="text-bg-danger" invisible="active"/>
+                                <field name="title" class="fw-bold mb-1 fs-5 mb-1"/>
+                                <div class="row g-0">
+                                    <div class="col-10 p-0 pb-1" t-if="record.answer_count.raw_value != 0">
+                                        <div class="row mt-4 ms-2">
+                                            <div class="col-4 p-0">
+                                                <a name="action_buffalo_survey_user_input" type="object" class="d-flex flex-column align-items-center">
+                                                    <field name="answer_count" class="fw-bold"/>
+                                                    <span class="text-break text-muted">Registered</span>
+                                                </a>
+                                            </div>
+                                            <div class="col-4 p-0 border-start">
+                                                <a name="action_buffalo_survey_user_input_completed" type="object" class="d-flex flex-column align-items-center">
+                                                    <field name="answer_done_count" class="fw-bold"/>
+                                                    <span class="text-break text-muted">Completed</span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Generic -->
+                            <div  t-if="!selection_mode" class="o_survey_kanban_card_bottom">
+                                <field name="activity_ids" widget="kanban_activity"/>
+                            </div>
+                        </div>
+                    </templates>
+            </kanban>
         </field>
     </record>
 
@@ -474,7 +558,7 @@
         <field name="arch" type="xml">
             <xpath expr="//list" position="attributes">
                 <attribute name="string">Base Survey List</attribute>
-                <!-- <attribute name="create">false</attribute> -->
+                <attribute name="create">false</attribute>
                 <attribute name="js_class">buffalo_lunch_list</attribute>
             </xpath>
         </field>
@@ -511,7 +595,7 @@
             (0, 0, {'view_mode': 'calendar', 'view_id': ref('buffalo_lunch_survey_calendar_base')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('buffalo_lunch_survey_form_base')})
         ]"/>
-        <field name="context">{'buffalo_lunch': True}</field>
+        <field name="context">{'buffalo_lunch': True, 'active_test': False}</field>
         <field name="domain">[['survey_type','=', 'lunch']]</field>
         <field name="search_view_id" ref="survey.survey_survey_view_search"/>
         <field name="target">current</field>
@@ -522,13 +606,4 @@
     <menuitem id="menu_buffalo_lunch_root" name="Buffalo Lunch Survey" sequence="10"/>
     <!-- Submenus -->
     <menuitem id="menu_buffalo_lunch_survey_list_base" name="Base Survey List" parent="menu_buffalo_lunch_root" action="action_buffalo_lunch_survey_kanban_base" sequence="1"/>
-
-    <!-- So that Survey app uses standard views
-    <record id="survey.action_survey_form" model="ir.actions.act_window">
-        <field name="view_ids" eval="[(5, 0, 0),
-            (0, 0, {'view_mode': 'kanban', 'view_id': ref('survey.survey_survey_view_kanban')}),
-            (0, 0, {'view_mode': 'list', 'view_id': ref('survey.survey_survey_view_tree')}),
-            (0, 0, {'view_mode': 'form', 'view_id': ref('survey.survey_survey_view_form')})
-        ]"/>
-    </record> -->
 </odoo>
