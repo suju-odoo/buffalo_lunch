@@ -39,6 +39,7 @@ class Survey(models.Model):
         return date_from, date_end
 
     def _populate_lunch_questions(self):
+        # Populate Monday~Friday surveys (survey.question) and assign them to self
         if not self.date_from or not self.date_end:
             return
 

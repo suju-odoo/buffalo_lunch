@@ -16,6 +16,8 @@ We eat lunch
         'views/survey_question.xml',
         'views/survey_actions.xml',
         'views/portal_template.xml',
+        'views/lunch_product.xml',
+        'views/lunch_portal_templates.xml',
     ],
     'assets': {
         'web.assets_backend': [

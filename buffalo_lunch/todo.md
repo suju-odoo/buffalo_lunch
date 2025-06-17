@@ -9,3 +9,7 @@ Function to remind registered users to fill out the survey before closure.
 when populating questions - see if it's holiday
 survey m,enu image description ....
 Show survey on the website 
+
+check holidays when populating survey.question ( Mon - Fri )
+
+aggregated numbers for weekly, monthly, yearly.

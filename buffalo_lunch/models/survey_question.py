@@ -5,6 +5,7 @@ import json
 import collections
 import itertools
 import operator
+from odoo.tools import format_datetime
 
 
 class SurveyQuestion(models.Model):
@@ -243,3 +244,37 @@ class SurveyQuestion(models.Model):
         
         return table_data, graph_data
 
+    def get_answer_of_user(self, uid):
+        self.ensure_one()
+        user_input_lines = self.env['survey.user_input.line'].search([
+            ('question_id', '=', self.id),
+            ('user_input_id.partner_id.user_id', '=', uid),
+            ('user_input_id.state', '=', 'done'),
+        ], order='create_date desc', limit=1)
+
+        if not user_input_lines:
+            return None
+
+        user_input_line = user_input_lines[0]
+        if user_input_line.suggested_answer_id:
+            if self.survey_id.survey_type == 'lunch' and user_input_line.suggested_answer_id.value == 'Yes':
+                # Special handling for 'Yes (Vegan)' in lunch surveys
+                if user_input_line.user_input_id.partner_id and user_input_line.user_input_id.partner_id.is_vegan:
+                    return _('Yes (Vegan)')
+                else:
+                    return _('Yes')
+            else:
+                return user_input_line.suggested_answer_id.value_label or user_input_line.suggested_answer_id.value
+        elif user_input_line.value_char_box:
+            return user_input_line.value_char_box
+        elif user_input_line.value_numerical_box:
+            return str(user_input_line.value_numerical_box)
+        elif user_input_line.value_date:
+            return str(user_input_line.value_date)
+        elif user_input_line.value_datetime:
+            return str(user_input_line.value_datetime)
+        elif user_input_line.value_scale:
+            return str(user_input_line.value_scale)
+        elif user_input_line.skipped:
+            return _('Skipped')
+        return None

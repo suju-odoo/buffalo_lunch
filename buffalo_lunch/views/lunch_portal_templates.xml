@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="lunch_portal_page" name="Lunch Portal Page" customize_show="True">
+            <t t-call="portal.portal_layout">
+                <t t-set="wrapwrap_classes" t-value="'container'"/>
+                <t t-set="o_portal_fullwidth_bus_classes" t-value="'portal_fullwidth_page'"/>
+
+                <div id="wrap" class="oe_structure">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h1 class="text-center mb-4">Lunch Menu</h1>
+                                
+                                <div class="row align-items-center">
+                                    <div class="col-1 d-flex align-items-center justify-content-center">
+                                        <a t-attf-href="/lunch?week_offset={{week_offset - 1}}" class="btn btn-link btn-lg">&lt;</a>
+                                    </div>
+                                    <t t-foreach="['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']" t-as="day_name">
+                                        <t t-set="day_data" t-value="lunch_menu_by_day.get(day_name)"/>
+                                        <div class="col-lg-2 col-md-4 col-sm-6 mb-4">
+                                            <div class="card h-100">
+                                                <div class="card-header text-center">
+                                                    <h5 class="mb-0">
+                                                        <t t-esc="day_name"/>
+                                                        <br/>
+                                                        <small class="text-muted">
+                                                            <t t-esc="day_data.get('date').strftime('%m/%d') if day_data and day_data.get('date') else ''"/>
+                                                        </small>
+                                                    </h5>
+                                                </div>
+                                                <div class="card-body" style="min-height: 300px;">
+                                                    <t t-if="day_data and day_data.get('questions')">
+                                                        <t t-foreach="day_data.get('questions')" t-as="question">
+                                                            <div class="text-center mb-3">
+                                                                <img t-if="question.get('image_url')"
+                                                                     t-attf-src="{{question.get('image_url')}}"
+                                                                     class="img-fluid rounded mb-2"
+                                                                     style="max-width: 150px; max-height: 150px; object-fit: cover;"
+                                                                     alt="Product Image"/>
+                                                                <h6 class="card-title">
+                                                                    <t t-esc="question.get('name')"/>
+                                                                </h6>
+                                                                <p class="card-text text-muted small" t-esc="question.get('description')"/>
+                                                            </div>
+                                                            <hr t-if="not question_last"/>
+                                                        </t>
+                                                    </t>
+                                                    <t t-else="">
+                                                        <p class="text-center text-muted">No lunch scheduled.</p>
+                                                    </t>
+                                                </div>
+                                                <div class="card-footer text-center">
+                                                    <t t-if="day_data.get('day_user_answer') and (day_data.get('day_user_answer') == 'Yes' or day_data.get('day_user_answer') == 'Yes (Vegan)')">
+                                                        <span class="badge badge-success" style="font-size: 0.9em; padding: 5px 10px;">
+                                                            <t t-esc="day_data.get('day_user_answer')"/>
+                                                        </span>
+                                                        <p class="mt-2 mb-0 text-success">You answered: Yes</p>
+                                                    </t>
+                                                    <t t-elif="day_data.get('day_user_answer')">
+                                                        <span class="badge badge-danger" style="font-size: 0.9em; padding: 5px 10px;">
+                                                            No
+                                                        </span>
+                                                        <p class="mt-2 mb-0 text-danger">You answered: No</p>
+                                                    </t>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </t>
+                                    <div class="col-1 d-flex align-items-center justify-content-center">
+                                        <a t-attf-href="/lunch?week_offset={{week_offset + 1}}" class="btn btn-link btn-lg">&gt;</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </template>
+    </data>
+</odoo> 

@@ -11,3 +11,9 @@ class LunchProduct(models.Model):
         'question_ids',
         string='Questions'
     )
+    
+    special_description = fields.Html(
+        string='Allergens, etc.,',
+        sanitize=False,
+        translate=True,
+    )
